@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>See On Map</title>
+		<link rel="stylesheet" href="/public/css/bootstrap.min.css">
+	</head>
+	<style media="screen">
+		.googlemap {
+			height: 70vh;
+			border:solid 2px black;
+		}
+	</style>
+	<body>
+		<div class="container-fluid">
+			<br>
+			<div class="row">
+				<div class="col-sm-4"></div>
+				<div class="col-sm-5 panel panel-primary">
+
+					<div class="row panel-heading">
+						<h4>Enter user name of the person you want to track</h4>
+					</div>
+					<div class="row panel-body">
+						<input class="input col-sm-8" type="text" id="uname" placeholder="Enter here">
+						<div class="col-sm-1"></div>
+						<button type="button" class="btn btn-danger col-sm-3" onclick="startTracking();">Track</button>
+					</div>
+				</div>
+				<div class="col-sm-3"></div>
+			</div>
+			<div class="row">
+				<div class="col-sm-1"></div>
+				<div id="mapSpace" class="googlemap col-sm-10">
+
+				</div>
+				<div class="col-sm-1"></div>
+			</div>
+		</div>
+		<script type="text/javascript">
+			var ajax = new XMLHttpRequest();
+			var lng=0,lat=0;
+			var map;
+			var marker;
+			var uname;
+			var uid;
+			var trackInter,viewInter;
+
+			function _(x) {
+				return document.getElementById(x);
+			}
+
+			function initMap() {
+				map = new google.maps.Map(_('mapSpace'),{
+					center: {lat:0,lng:0},
+					zoom:4
+				});
+				marker = new google.maps.Marker({
+					position:{lat:0,lng:0},
+				});
+				marker.setMap(map);
+			}
+
+			function startTracking() {
+				uname = _("uname").value;
+				ajax.open("POST","/track",true);
+				ajax.onreadystatechange = function(){
+					if(this.readyState==4 && this.status==200){
+//						window.alert(this.responseText);
+						if(this.responseText=='-1')
+							window.alert(uname+" doesn't exist");
+						else {
+							uid = this.responseText;
+							google.maps.event.addListener(marker,'click',function(){
+								(new google.maps.InfoWindow({content:uname})).open(map,marker);
+							});
+							refreshView();
+							trackInter = setInterval(refreshTrack,700);
+							viewInter = setInterval(refreshView,20000);
+						}
+					}
+				};
+				ajax.send("uname="+uname);
+			}
+
+			function refreshTrack() {
+				ajax.open("POST","trackLocation",true);
+				ajax.onreadystatechange = function(){
+					if(this.readyState==4 && this.status==200){
+//						alert(this.responseText);
+						if(this.responseText=="-1"){
+							clearInterval(trackInter);
+							clearInterval(viewInter);
+							window.alert(uname+" is offline");
+						}
+						else {
+							console.log(JSON.parse(this.responseText));
+							var location = JSON.parse(this.responseText);
+							console.log("Longitude: "+location.long+"\tLatitude: "+location.lat);
+							marker.setMap(null);
+							marker.setPosition(new google.maps.LatLng(location.lat,location.long));
+							marker.setMap(map);
+						}
+					}
+				};
+				ajax.send('uid='+uid);
+			}
+
+			function refreshView() {
+				ajax.open("POST","trackLocation",true);
+				ajax.onreadystatechange = function(){
+					if(this.readyState==4 && this.status==200){
+						if(this.responseText=='-1'){
+							clearInterval(trackInter);
+							clearInterval(viewInter);
+							window.alert(uname+" is offline");
+						}
+						else {
+							console.log(JSON.parse(this.responseText));
+							var location = JSON.parse(this.responseText);
+							console.log("Longitude: "+location.long+"\tLatitude: "+location.lat);
+							map.panTo(new google.maps.LatLng(location.lat,location.long));
+						}
+					}
+				};
+				ajax.send('uid='+uid);
+			}
+		</script>
+		<script src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyAQTSmUkSTAKXWeD0Xy8Becvmp_tPSSvtA&callback=initMap"></script>
+	</body>
+</html>
