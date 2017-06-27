@@ -21,7 +21,8 @@ function findUser(name) {
 		return -1;
 	var i = 0;
 	for(i=0;i<onlineUserJSON.length;i++) {
-		console.log(onlineUserJSON[i].uname);
+		if(onlineUserJSON[i]==undefined)
+			continue;
 		if(onlineUserJSON[i].uname==name)
 			return i;
 	}
@@ -77,8 +78,15 @@ app.post('/updateLocation',function(req,res){
 	req.on('end',function(){
 		var udata = qs.parse(body);
 		console.log(JSON.stringify(udata));
-		onlineUserJSON[Number(udata.index)].lat = Number(udata.lat);
-		onlineUserJSON[Number(udata.index)].long = Number(udata.long);
+		if(onlineUserJSON[Number(udata.index)])	{
+			onlineUserJSON[Number(udata.index)].lat = Number(udata.lat);
+			onlineUserJSON[Number(udata.index)].long = Number(udata.long);
+		}
+		else {
+			delete onlineUserJSON[Number(udata.index)];
+			res.writeHead(200,{'Content-Type':'text/plain'});
+			res.write('-1');
+		}
 		res.end();
 	});
 });

@@ -49,6 +49,8 @@
 		<script type="text/javascript">
 			var ajax = new XMLHttpRequest();
 			var uid;
+			var locationRefresh;
+			var onServer;
 
 			window.onunload = function() {
 				if(uid!=undefined) {
@@ -72,9 +74,10 @@
 						}
 						else {
 							uid = response;
+							onServer = true;
 							window.alert('Hosting will start in a few moments');
 							_('ostat').innerHTML = "Online";
-							setInterval(refreshCurrentLoc,213);
+							locationRefresh = setInterval(refreshCurrentLoc,213);
 						}
 					}
 				};
@@ -86,15 +89,25 @@
 				ajax.open('POST','/updateLocation',true);
 				ajax.onreadystatechange = function() {
 					if(this.readyState==4 && this.status==200) {
-						_('lat').innerHTML = location.coords.latitude;
-						_('long').innerHTML = location.coords.longitude;
+						if(this.responseText=='-1') {
+							onServer = false;
+							_('ostat').innerHTML = 'Offline';
+							_('lat').innerHTML = '-';
+							_('long').innerHTML = '-';
+							window.alert("You are offline. Host again to be seen.");
+							clearInterval(locationRefresh);
+						}
+						else {
+							_('lat').innerHTML = location.coords.latitude;
+							_('long').innerHTML = location.coords.longitude;
+						}
 					}
 				};
 				ajax.send("lat="+location.coords.latitude+"&long="+location.coords.longitude+"&index="+uid);
 			}
 
 			function refreshCurrentLoc() {
-				if(navigator.geolocation)
+				if(navigator.geolocation && onServer)
 					navigator.geolocation.getCurrentPosition(sendLocation);
 				else {
 					_('ostat').innerHTML = "Location Service not supported"
