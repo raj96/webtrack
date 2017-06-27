@@ -19,12 +19,14 @@
 						<h4>Enter your host name(should be unique)</h4>
 					</div>
 					<div class="row panel-body">
-						<input class="input col-sm-12" type="text" id="hostName">
+						<div class="row">
+							<input class="input col-sm-12" type="text" id="hostName" disabled="disabled">
+						</div>
 						<div class="row">
 							<div class="col-sm-4"></div>
 							<div class="col-sm-4"></div>
 							<div class="col-sm-4">
-								<button class="btn btn-danger" type="button" onclick="host();">Host</button>
+								<button class="btn btn-danger" type="button" onclick="host();">Start Hosting</button>
 							</div>
 						</div>
 						<div class="row">
@@ -48,14 +50,19 @@
 		</div>
 		<script type="text/javascript">
 			var ajax = new XMLHttpRequest();
-			var uid;
+			var uname;
 			var locationRefresh;
 			var onServer;
 
+			window.onload = function(){
+				_('hostName').value = '';
+			}
+
 			window.onunload = function() {
-				if(uid!=undefined) {
+
+				if(uname!=undefined) {
 					ajax.open('POST','/remove',true);
-					ajax.send("uid="+uid);
+					ajax.send("uname="+uname);
 				}
 			}
 
@@ -64,55 +71,78 @@
 			}
 
 			function host() {
-				var hostName = _('hostName').value;
-				ajax.open('POST','/tryUser',true);
-				ajax.onreadystatechange = function(){
-					if(this.readyState==4 && this.status==200) {
-						var response = this.responseText;
-						if(response=='-1') {
-							window.alert('User exists. Try another name.');
-						}
-						else {
-							uid = response;
-							onServer = true;
-							window.alert('Hosting will start in a few moments');
-							_('ostat').innerHTML = "Online";
-							locationRefresh = setInterval(refreshCurrentLoc,213);
-						}
-					}
-				};
-				ajax.send("hostName="+hostName);
-			}
 
-			function sendLocation(location) {
-
-				ajax.open('POST','/updateLocation',true);
+				ajax.open('POST','/getUser',true);
 				ajax.onreadystatechange = function() {
 					if(this.readyState==4 && this.status==200) {
-						if(this.responseText=='-1') {
-							onServer = false;
-							_('ostat').innerHTML = 'Offline';
-							_('lat').innerHTML = '-';
-							_('long').innerHTML = '-';
-							window.alert("You are offline. Host again to be seen.");
-							clearInterval(locationRefresh);
-						}
-						else {
-							_('lat').innerHTML = location.coords.latitude;
-							_('long').innerHTML = location.coords.longitude;
-						}
+						window.alert(this.responseText);
+						_('hostName').value = this.responseText;
+						uname = this.responseText;
+
+						ajax.open('POST','/tryUser',true);
+						ajax.onreadystatechange = function(){
+							if(this.readyState==4 && this.status==200) {
+								var response = this.responseText;
+								if(response=='-1') {
+									window.alert('User exists. Click start hosting once more.');
+									_('hostName').value = '';
+								}
+								else {
+									onServer = true;
+									window.alert('Hosting will start in a few moments');
+									_('hostName').value = uname;
+									_('ostat').innerHTML = "Online";
+									locationRefresh = setInterval(refreshCurrentLoc,213);
+								}
+							}
+						};
+						ajax.send("uname="+uname);
+
 					}
-				};
-				ajax.send("lat="+location.coords.latitude+"&long="+location.coords.longitude+"&index="+uid);
+				}
+				ajax.send();
+
 			}
 
 			function refreshCurrentLoc() {
-				if(navigator.geolocation && onServer)
-					navigator.geolocation.getCurrentPosition(sendLocation);
+				console.log(onServer);
+				if(navigator.geolocation && onServer) {
+					navigator.geolocation.getCurrentPosition(
+						//Success
+						function(location){
+						console.log("Called Location");
+						ajax.open('POST','/updateLocation',true);
+						ajax.onreadystatechange = function() {
+							console.log(this.readyState+":"+this.status);
+							if(this.readyState==4 && this.status==200) {
+								console.log(this.responseText);
+								if(this.responseText=='-1') {
+									onServer = false;
+									_('ostat').innerHTML = 'Offline';
+									_('lat').innerHTML = '-';
+									_('long').innerHTML = '-';
+									window.alert("You are offline. Host again to be seen.");
+									clearInterval(locationRefresh);
+								}
+								else {
+									_('lat').innerHTML = location.coords.latitude;
+									_('long').innerHTML = location.coords.longitude;
+								}
+							}
+						};
+						ajax.send("lat="+location.coords.latitude+"&long="+location.coords.longitude+"&uname="+uname);
+
+						},
+						function onError(locationError){
+							console.log(locationError.code+": "+locationError.message);
+						}
+					);
+				}
 				else {
 					_('ostat').innerHTML = "Location Service not supported"
 				}
 			}
+
 
 		</script>
 	</body>
