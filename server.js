@@ -202,4 +202,5 @@ app.get('/',function(req,res) {
 	});
 });
 
-app.listen(8080);
+var port = process.env.port || 1337;
+app.listen(port);
